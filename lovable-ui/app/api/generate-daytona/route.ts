@@ -13,31 +13,32 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // This creates a streamable response
+  // This creates a streamable response so the user sees real-time logs
   const readableStream = new ReadableStream({
     start(controller) {
-      // Execute the new generation script
+      // Point to the new script we are about to create
       const scriptPath = "scripts/generate-with-gemini.ts";
       const child = spawn("npx", ["tsx", scriptPath, prompt], {
         env: {
           ...process.env,
-          // Pass the API keys to the script's environment
+          // Securely pass the API keys to the script's environment
           DAYTONA_API_KEY: process.env.DAYTONA_API_KEY,
           GEMINI_API_KEY: process.env.GEMINI_API_KEY,
         },
-        shell: true,
+        shell: true, // Use shell to ensure npx is found
       });
 
-      // Stream stdout from the script to the client
+      // Stream stdout (standard output) from the script to the browser
       child.stdout.on("data", (data) => {
         controller.enqueue(data);
       });
 
-      // Stream stderr from the script to the client
+      // Stream stderr (error output) as well
       child.stderr.on("data", (data) => {
         controller.enqueue(data);
       });
 
+      // When the script finishes, close the connection
       child.on("close", (code) => {
         console.log(`Child process exited with code ${code}`);
         controller.close();
